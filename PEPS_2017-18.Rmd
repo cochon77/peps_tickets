@@ -1,0 +1,55 @@
+---
+title: "PEPS_2017-18"
+author: "Colin Pi"
+date: "5/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(lubridate)
+library(shiny)
+library(shinythemes)
+library(plotly)
+```
+
+```{r}
+tickets <- read.csv(file = "WHD_Tickets_2018.csv")
+Time <- tickets %>% select(Scheduled.Date)
+
+Time$Date <- str_split_fixed(Time$Scheduled.Date, " ", n = 2)[,1]
+Time$begin <- str_split_fixed(Time$Scheduled.Date, " - ", n = 2)[,1]
+Time$end <- paste(Time$Date, str_split_fixed(Time$Scheduled.Date, " - ", n = 2)[,2], sep =  " ")
+Time$Date <- as.Date(Time$Date, "%m/%d/%y")
+Time$begin <- as.POSIXct(strptime(Time$begin, "%m/%d/%Y %I:%M %p"))
+Time$end <- as.POSIXct(strptime(Time$end, "%m/%d/%Y %I:%M %p"))
+
+winter <- Time %>% filter(between(Date, as.Date("2018-01-03"), as.Date("2018-03-14"))) %>% arrange(Date)
+spring <- Time %>% filter(between(Date, as.Date("2018-03-26"), as.Date("2018-06-04"))) %>% arrange(Date)
+fall <- Time %>% filter(between(Date, as.Date("2018-09-10"), as.Date("2018-11-19"))) %>% arrange(Date)
+winter$term <- "Winter"
+spring$term <- "Spring"
+fall$term <- "Fall"
+
+winter$Week <- floor(difftime(winter$Date, "2018-01-02", units = "weeks")) + 1
+spring$Week <- floor(difftime(spring$Date, "2018-03-25", units = "weeks")) + 1
+fall$Week <- floor(difftime(fall$Date, "2018-09-09", units = "weeks")) + 1
+
+data.2018 <- rbind(winter, spring, fall)
+data.2018$Week <- as.factor(data.2018$Week)
+data.2018$dayofweek <- wday(data.2018$Date, label=TRUE)
+
+data.2018 <- transform(data.2018, term=factor(term,levels=c("Fall","Winter","Spring")))
+
+ggplotly(ggplot(data.2018) +
+  geom_bar(aes(Week)) +
+  facet_wrap(~term) +
+  coord_flip())
+
+ggplot(data.2018) +
+  geom_bar(aes(dayofweek))
+```
+
